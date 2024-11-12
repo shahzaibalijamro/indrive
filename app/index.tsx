@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
-import { Alert, FlatList, Image, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, Image,SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import MapView, { Callout, Marker, Polyline } from "react-native-maps";
 import polyline from 'polyline-encoded';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import * as Location from 'expo-location';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { Entypo, FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 interface LocationData {
     latitude: number;
@@ -35,6 +33,8 @@ interface Place {
 
 export default function Index() {
     const [appIsReady, setAppIsReady] = useState(false);
+    const [locationName, setLocationName] = useState('');
+    const [fare, setFare] = useState('')
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [search, setSearch] = useState<string>('');
     const [searchedPlaceRes, setSearchedPlaceRes] = useState<Place[]>([]);
@@ -44,43 +44,43 @@ export default function Index() {
     SplashScreen.preventAutoHideAsync();
     const navigation = useNavigation();
     const toastConfig = {
-      success: (props: any) => (
-        <BaseToast
-          {...props}
-          style={{ borderLeftColor: '#9ed90d', borderLeftWidth: 10, width: '90%', marginTop: 15 }}
-          contentContainerStyle={{ paddingHorizontal: 15 }}
-          text1Style={{
-            fontSize: 16,
-            fontWeight: '400'
-          }}
-          text2Style={{
-            fontSize: 15,
-            fontWeight: '400'
-          }}
-        />
-      ),
-      error: (props: any) => (
-        <ErrorToast
-          {...props}
-          style={{ borderLeftColor: '#FF0000', borderLeftWidth: 10, width: '90%', marginTop: 15 }}
-          contentContainerStyle={{ paddingHorizontal: 15 }}
-          text1Style={{
-            fontSize: 16,
-            fontWeight: '400'
-          }}
-          text2Style={{
-            fontSize: 15,
-            fontWeight: '400'
-          }}
-        />
-      ),
+        success: (props: any) => (
+            <BaseToast
+                {...props}
+                style={{ borderLeftColor: '#9ed90d', borderLeftWidth: 10, width: '90%', marginTop: 15 }}
+                contentContainerStyle={{ paddingHorizontal: 15 }}
+                text1Style={{
+                    fontSize: 16,
+                    fontWeight: '400'
+                }}
+                text2Style={{
+                    fontSize: 15,
+                    fontWeight: '400'
+                }}
+            />
+        ),
+        error: (props: any) => (
+            <ErrorToast
+                {...props}
+                style={{ borderLeftColor: '#FF0000', borderLeftWidth: 10, width: '90%', marginTop: 70 }}
+                contentContainerStyle={{ paddingHorizontal: 15 }}
+                text1Style={{
+                    fontSize: 16,
+                    fontWeight: '400'
+                }}
+                text2Style={{
+                    fontSize: 15,
+                    fontWeight: '400'
+                }}
+            />
+        ),
     };
     const showToast = (type: string, heading: string, paragraph: string) => {
-      Toast.show({
-        type: type,
-        text1: heading,
-        text2: paragraph
-      });
+        Toast.show({
+            type: type,
+            text1: heading,
+            text2: paragraph
+        });
     }
     useEffect(() => {
         const getData = async () => {
@@ -88,10 +88,11 @@ export default function Index() {
                 const value = await AsyncStorage.getItem('newUser');
                 console.log(value);
                 if (value === null) {
-                  // showToast('error','Not logged in!','Please login to continue!')
-                  // setTimeout(() => {
+                    // showToast('error','Not logged in!','Please login to continue!')
+                    //   setTimeout(() => {
                     router.push("/main/login")
-                  // }, 1000);
+                    // navigation.navigate('history')
+                    // }, 1000);
                 } else {
                     (async () => {
                         let { status } = await Location.requestForegroundPermissionsAsync();
@@ -102,12 +103,27 @@ export default function Index() {
                         try {
                             let location = await Location.getCurrentPositionAsync({});
                             setLocation(location);
+                            console.log(location);
                             setVisibleRegion({
                                 latitude: location.coords.latitude,
                                 longitude: location.coords.longitude,
                                 latitudeDelta: 0.007,
                                 longitudeDelta: 0.007,
                             });
+                            let reverseGeocode = await Location.reverseGeocodeAsync({
+                                latitude: location.coords.latitude,
+                                longitude: location.coords.longitude,
+                            });
+                            if (reverseGeocode.length > 0) {
+                                const { street,
+                                    name,
+                                    district,
+                                    city,
+                                    region,
+                                    postalCode,
+                                    country, } = reverseGeocode[0];
+                                setLocationName(`${district}, ${city}, ${region}, ${country}`);
+                            }
                         } catch (error) {
                             Alert.alert('Could not fetch location');
                         } finally {
@@ -123,6 +139,8 @@ export default function Index() {
     }, []);
 
     const goToSelectedLocation = (item: Place) => {
+        console.log(item);
+        setSearch(item.name)
         setSearchedPlaceRes([]);
         setSelectedLocation({
             latitude: item.geocodes.main.latitude,
@@ -153,6 +171,19 @@ export default function Index() {
                 console.log(err);
             });
     };
+    const findDriver = () => {
+        if (!selectedLocation) {
+            showToast("error", "Select Destination", "No Destination selected!")
+            console.log(fare.length);
+        } else {
+            if (fare.length < 1) {
+                showToast("error", "No offer found", "Enter your desired fare!")
+            } else {
+                router.push(`/confirmRide?address=${locationName}&destination=${search}&fare=${fare}`)
+            }
+        }
+        // router.push("/confirmRide")
+    }
     const getPlaces = () => {
         const options = {
             method: 'GET',
@@ -191,17 +222,8 @@ export default function Index() {
         <SafeAreaView style={styles.container}>
             {location && (
                 <SafeAreaView style={styles.mapContainer}>
-                    <TextInput
-                        style={[styles.input, Platform.OS === 'android' && { bottom: 20 }]}
-                        placeholder="Search location"
-                        value={search}
-                        onSubmitEditing={getPlaces}
-                        returnKeyType="done"
-                        onChangeText={setSearch}
-                        keyboardType="default"
-                    />
                     <View style={{ position: 'absolute', top: 20, flexDirection: 'row', justifyContent: 'space-between', width: '100%', zIndex: 20 }}>
-                        <TouchableOpacity style={{ backgroundColor: '#272c32', position: 'absolute', width: 50, height: 50, borderRadius: 150, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto', top: 10, zIndex: 20, marginTop: 20, marginBottom: 10, left: 20 }} onPress={() => navigation.openDrawer()}  activeOpacity={0.4}>
+                        <TouchableOpacity style={{ backgroundColor: '#272c32', position: 'absolute', width: 50, height: 50, borderRadius: 150, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto', top: 10, zIndex: 20, marginTop: 20, marginBottom: 10, left: 20 }} onPress={() => navigation.openDrawer()} activeOpacity={0.4}>
                             {/* <FontAwesome6 name="bars" size={26} color="white" /> */}
                             <Image
                                 source={require('@/assets/images/menu.png')}
@@ -328,7 +350,7 @@ export default function Index() {
                                     source={require('@/assets/images/rec (1).png')}
                                     style={{ width: 16, height: 16, marginRight: 2, marginLeft: 5, }}
                                 />
-                                <Text style={styles.locationText}> KB Rd (Bhittaiabad, Block 9, Bhittaiabad)</Text>
+                                <Text style={styles.locationText}> {locationName.length > 0 ? locationName : ''}</Text>
                             </View>
                             <View style={{ ...styles.inputContainer, backgroundColor: '#323943' }}>
                                 <TouchableOpacity style={styles.countryPicker}>
@@ -358,9 +380,10 @@ export default function Index() {
                                     style={styles.input2}
                                     placeholder="Offer your fare"
                                     placeholderTextColor="#888"
-                                    keyboardType="default"
-                                // value={}
-                                // onChangeText={}
+                                    keyboardType="number-pad"
+                                    value={fare}
+                                    returnKeyType="done"
+                                    onChangeText={setFare}
                                 />
                             </View>
                             {/* <TextInput style={styles.input2} placeholder="To" placeholderTextColor={'#9fa6b0'}/> */}
@@ -374,7 +397,7 @@ export default function Index() {
                                 />
                                 {/* <Text style={{ marginHorizontal: 10, fontSize: 22 }}>💵</Text> */}
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.findDriverButton}>
+                            <TouchableOpacity style={styles.findDriverButton} onPress={findDriver}>
                                 <Text style={styles.buttonText2}>Find a driver</Text>
                             </TouchableOpacity>
                             <TouchableOpacity>
@@ -387,7 +410,7 @@ export default function Index() {
                     </View>
                 </SafeAreaView>
             )}
-            <Toast />
+            <Toast config={toastConfig} />
         </SafeAreaView>
     );
 }
@@ -423,13 +446,14 @@ const styles = StyleSheet.create({
         right: 15,
         zIndex: 2,
     },
-    itemView: { paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    itemView: { paddingVertical: 10, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#eee', zIndex: 20 },
     itemText1: { paddingBottom: 5, fontWeight: "600", fontSize: 15 },
     itemText2: { fontWeight: "400", fontSize: 12 },
     container2: {
         position: 'absolute',
         zIndex: 10,
         // width: '100%',
+        // height: 340,
         bottom: 0,
         padding: 16,
         backgroundColor: '#1c1f24',
@@ -444,8 +468,8 @@ const styles = StyleSheet.create({
     rideOptions: {
         flexDirection: 'row',
         // justifyContent: 'space-around',
-        marginVertical: 12,
-        marginBottom: 16,
+        marginTop: 5,
+        marginBottom: 10,
         alignItems: 'center',
     },
     option: {
@@ -498,10 +522,12 @@ const styles = StyleSheet.create({
     },
     findDriverButton: {
         backgroundColor: '#9ed90d',
-        paddingVertical: 15,
+        paddingVertical: 10,
         borderRadius: 12,
         alignItems: 'center',
-        width: '70%'
+        justifyContent: 'center',
+        width: '70%',
+        height: 50
     },
     buttonText2: {
         color: 'black',
@@ -513,6 +539,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        width: '100%'
+        width: '100%',
     }
 });

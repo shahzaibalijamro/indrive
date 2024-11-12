@@ -4,8 +4,8 @@ export default function Layout() {
   enableScreens();
   return (
     <Stack>
-      <Stack.Screen options={{headerShown : false,animation:"ios"}} name="index" />
-      <Stack.Screen options={{headerShown : false,animation:"ios"}} name="login" />
+      <Stack.Screen options={{headerShown : false,animation:"ios",headerTitle: "sdgds"}} name="index" />
+      <Stack.Screen options={{headerShown : false,animation:"ios",headerTitle: "sdgds"}} name="login" />
       <Stack.Screen options={{headerShown : false,animation:"ios"}} name="register" />
       <Stack.Screen options={{headerShown : false,animation:"ios"}} name="profilesetup" />
       <Stack.Screen options={{headerShown : false,animation:"ios"}} name="city" />

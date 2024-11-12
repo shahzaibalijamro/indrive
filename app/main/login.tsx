@@ -66,7 +66,7 @@ export default function JoinScreen() {
       if (!value) {
         Alert.alert("Hold on!", "You need to log in first.", [{ text: "OK" }]);
         return true;
-      }else{
+      }else if (value === 'true'){
         showToast('success','User already logged in!','Redirecting to the confirmation page!')
         setTimeout(() => {
           router.push("./profilesetup")
@@ -97,7 +97,7 @@ export default function JoinScreen() {
   useEffect(() => {
     const checkUserStatus = async () => {
       const value = await AsyncStorage.getItem('yetToSetup');
-      if (value) {
+      if (value == 'true') {
         showToast('success', 'User already logged in!', 'Redirecting to the confirmation page!')
         setTimeout(() => {
           router.push("./profilesetup")

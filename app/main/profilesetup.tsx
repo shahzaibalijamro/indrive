@@ -81,13 +81,13 @@ export default function ConfirmInfoScreen() {
     const getUser = async () => {
       const email = await AsyncStorage.getItem('email');
       setEmail(email)
-      const q = query(collection(db, "profiles"), where("uid", "==", auth.currentUser?.uid));
+      const q = query(collection(db, "profiles"), where("email", "==", email));
       const querySnapshot = await getDocs(q);
       const arr = querySnapshot.docs.map((doc) => ({ ...(doc.data() as User), docId: doc.id })
       );
       if (arr.length > 0) {
         confirmUser();
-        router.replace("/")
+        router.push("/")
       }
     };
     getUser()
